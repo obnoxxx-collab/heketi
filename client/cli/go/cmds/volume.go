@@ -401,20 +401,43 @@ var volumeSnapshotCommand = &cobra.Command{
 	Long:    "Creates a snapshot",
 	Example: "  $ heketi-cli volume snapshot 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
 		s := cmd.Flags().Args()
-
 		if len(s) < 1 {
 			return errors.New("Volume id missing")
 		}
 
-		// TODO: implement heketi.VolumeSnapshot
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
 
-		//volumeId := cmd.Flags().Arg(0)
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//snapshot, err := heketi.VolumeSnapshot(volumeId)
-		err := errors.New("snapshot is not implemented yet")
+		// Create request
+		req := &api.VolumeSnapshotRequest{}
+		if volname != "" {
+			req.Name = volname
+		}
+		if description != "" {
+			req.Description = description
+		}
 
-		return err
+		// Create client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// Snapshot the volume
+		snap, err := heketi.VolumeSnapshot(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(snap)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", snap)
+		}
+		return nil
 	},
 }
 
@@ -424,16 +447,39 @@ var volumeCloneCommand = &cobra.Command{
 	Long:    "Creates a clone",
 	Example: "  $ heketi-cli volume clone 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
 			return errors.New("Volume id missing")
 		}
 
-		//volumeId := cmd.Flags().Arg(0)
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//volume, err := heketi.VolumeCloneCreate(volumeId)
-		err := errors.New("clone is not implemented yet")
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
 
-		return err
+		// Create request
+		req := &api.VolumeCloneRequest{}
+		if volname != "" {
+			req.Name = volname
+		}
+
+		// Create client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// Clone the volume
+		volume, err := heketi.VolumeClone(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(volume)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", volume)
+		}
+		return nil
 	},
 }

@@ -69,11 +69,9 @@ func (c *Client) SnapshotClone(id string, scr *api.SnapshotCloneRequest) (*api.S
 	}
 
 	return &snapshot, nil
-
 }
 
 func (c *Client) SnapshotList() (*api.SnapshotListResponse, error) {
-
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/snapshots", nil)
 	if err != nil {
@@ -107,7 +105,6 @@ func (c *Client) SnapshotList() (*api.SnapshotListResponse, error) {
 }
 
 func (c *Client) SnapshotInfo(id string) (*api.SnapshotInfoResponse, error) {
-
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/snapshots/"+id, nil)
 	if err != nil {
@@ -141,7 +138,6 @@ func (c *Client) SnapshotInfo(id string) (*api.SnapshotInfoResponse, error) {
 }
 
 func (c *Client) SnapshotDelete(snapshot_uuid string) error {
-
 	// Create a request
 	req, err := http.NewRequest("DELETE", c.host+"/snapshots/"+snapshot_uuid, nil)
 	if err != nil {
