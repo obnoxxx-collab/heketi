@@ -19,7 +19,7 @@ import (
 )
 
 type SnapshotEntry struct {
-	Info    api.SnapshotInfo
+	Info    api.SnapshotInfoResponse
 	Pending PendingItem
 }
 

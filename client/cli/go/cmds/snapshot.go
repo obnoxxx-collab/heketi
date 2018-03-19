@@ -10,13 +10,13 @@
 package cmds
 
 import (
-	//"encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	//"os"
 	//"strings"
 
-	//client "github.com/heketi/heketi/client/api/go-client"
+	client "github.com/heketi/heketi/client/api/go-client"
 	//"github.com/heketi/heketi/pkg/glusterfs/api"
 	//"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/spf13/cobra"
@@ -64,10 +64,8 @@ var snapshotDeleteCommand = &cobra.Command{
 
 		snapshotId := cmd.Flags().Arg(0)
 
-		// TODO: implement heketi.VolumeSnapshotDelete()
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//err := heketi.VolumeSnapshotDelete(snapshotId)
-		err := errors.New("delete is not implemented yet")
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		err := heketi.SnapshotDelete(snapshotId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Snapshot %s deleted\n", snapshotId)
 		}
@@ -87,13 +85,26 @@ var snapshotCloneCommand = &cobra.Command{
 			return errors.New("Snapshot id missing")
 		}
 
-		//snapshotId := cmd.Flags().Arg(0)
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//err := heketi.VolumeSnapshotClone(snapshotId)
+		snapshotId := cmd.Flags().Arg(0)
 
-		err := errors.New("clone is not implemented yet")
+		heketi := client.NewClient(options.Url, options.User, options.Key)
 
-		return err
+		volume, err := heketi.SnapshotClone(snapshotId)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(volume)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", volume)
+		}
+
+		return nil
 	},
 }
 
@@ -108,13 +119,24 @@ var snapshotInfoCommand = &cobra.Command{
 			return errors.New("Snapshot id missing")
 		}
 
-		//snapshotId := cmd.Flags().Arg(0)
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//snapshot, err := heketi.VolumeSnapshotInfo(snapshotId)
+		heketi := client.NewClient(options.Url, options.User, options.Key)
 
-		err := errors.New("info is not implemented yet")
+		snapshotId := cmd.Flags().Arg(0)
+		snapshot, err := heketi.SnapshotInfo(snapshotId)
+		if err != nil {
+			return err
+		}
 
-		return err
+		if options.Json {
+			data, err := json.Marshal(snapshot)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", snapshot)
+		}
+		return nil
 	},
 }
 
@@ -124,17 +146,36 @@ var snapshotListCommand = &cobra.Command{
 	Long:    "Lists all snapshots",
 	Example: "  $ heketi-cli snapshot list",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := cmd.Flags().Args()
-		if len(s) != 1 {
-			return errors.New("list command does not expect arguments")
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// List snapshots
+		list, err := heketi.SnapshotList()
+		if err != nil {
+			return err
 		}
 
-		//volumeId := cmd.Flags().Arg(0)
-		//heketi := client.NewClient(options.Url, options.User, options.Key)
-		//snapshots, err := heketi.VolumeSnapshotList(snapshotId)
+		if options.Json {
+			data, err := json.Marshal(list)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			for _, id := range list.Snapshots {
+				snap, err := heketi.SnapshotInfo(id)
+				if err != nil {
+					return err
+				}
 
-		err := errors.New("list is not implemented yet")
+				fmt.Fprintf(stdout, "Id:%-35v Name:%v CreateTime:%v Type:%v\n",
+					id,
+					snap.Name,
+					snap.CreateTime,
+					snap.Type)
+			}
+		}
 
-		return err
+		return nil
 	},
 }

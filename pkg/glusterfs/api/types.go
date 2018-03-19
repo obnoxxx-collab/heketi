@@ -358,13 +358,17 @@ func (scr SnapshotCloneRequest) Validate() error {
 	)
 }
 
-type SnapshotInfo struct {
+type SnapshotInfoResponse struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	UUID        string `json:"uuid"`
 	Description string `json:"description,omitempty"`
 	CreateTime  string `json:"createTime,omitempty"`
 	Type        string `json:"type"` // TODO: this should be 'file-volume' or 'block-volume'
+}
+
+type SnapshotListResponse struct {
+	Snapshots []string `json:"snapshots"`
 }
 
 // BlockVolume
