@@ -13,12 +13,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	//"os"
-	//"strings"
 
 	client "github.com/heketi/heketi/client/api/go-client"
-	//"github.com/heketi/heketi/pkg/glusterfs/api"
-	//"github.com/heketi/heketi/pkg/kubernetes"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
 
@@ -85,11 +82,16 @@ var snapshotCloneCommand = &cobra.Command{
 			return errors.New("Snapshot id missing")
 		}
 
-		snapshotId := cmd.Flags().Arg(0)
+		// Create request blob
+		snapId := cmd.Flags().Arg(0)
+		req := &api.SnapshotCloneRequest{}
+		if clonename != "" {
+			req.Name = clonename
+		}
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 
-		volume, err := heketi.SnapshotClone(snapshotId)
+		volume, err := heketi.SnapshotClone(snapId, req)
 		if err != nil {
 			return err
 		}

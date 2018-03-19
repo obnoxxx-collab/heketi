@@ -13,6 +13,8 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -20,9 +22,15 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-func (c *Client) SnapshotClone(snapshot_uuid string) (*api.SnapshotInfoResponse, error) {
+func (c *Client) SnapshotClone(id string, scr *api.SnapshotCloneRequest) (*api.SnapshotInfoResponse, error) {
+	// Marshal request to JSON
+	buffer, err := json.Marshal(scr)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a request
-	req, err := http.NewRequest("POST", c.host+"/snapshots/"+snapshot_uuid+"/create", nil)
+	req, err := http.NewRequest("POST", c.host+"/snapshots/"+id+"/clone", bytes.NewBuffer(buffer))
 	if err != nil {
 		return nil, err
 	}
