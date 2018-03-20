@@ -35,6 +35,7 @@ const (
 	OperationCreateBlockVolume
 	OperationDeleteBlockVolume
 	OperationRemoveDevice
+	OperationCloneVolume
 	OperationSnapshotVolume
 )
 
@@ -52,6 +53,7 @@ const (
 	OpAddBlockVolume
 	OpDeleteBlockVolume
 	OpRemoveDevice
+	OpCloneVolume
 	OpSnapshotVolume
 )
 

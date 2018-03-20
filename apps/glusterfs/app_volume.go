@@ -330,15 +330,50 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) VolumeClone(w http.ResponseWriter, r *http.Request) {
-	var msg api.VolumeCloneRequest
+	vars := mux.Vars(r)
+	vol_id := vars["id"]
 
+	var msg api.VolumeCloneRequest
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", http.StatusUnprocessableEntity)
 		return
 	}
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(),
+			http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
 
-	w.WriteHeader(http.StatusNotImplemented)
+	var volume *VolumeEntry
+	err = a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, vol_id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	// TODO: pass the optional name of the clone (msg.Name)
+	op := NewVolumeCloneOperation(volume, a.db)
+	if err := AsyncHttpOperation(a, w, r, op); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed clone volume "+
+				"%v: %v", vol_id, err),
+			http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *App) VolumeSnapshot(w http.ResponseWriter, r *http.Request) {

@@ -216,6 +216,17 @@ func (p *PendingOperationEntry) RecordDeleteVolume(v *VolumeEntry) {
 	v.Pending.Id = p.Id
 }
 
+func (p *PendingOperationEntry) RecordCloneVolume(v *VolumeEntry) {
+	p.recordChange(OpCloneVolume, v.Info.Id)
+	p.Type = OperationCloneVolume
+	v.Pending.Id = p.Id
+}
+
+func (p *PendingOperationEntry) FinalizeVolumeClone(v *VolumeEntry) {
+	v.Pending.Id = ""
+	return
+}
+
 func (p *PendingOperationEntry) RecordSnapshotVolume(v *VolumeEntry) {
 	p.recordChange(OpSnapshotVolume, v.Info.Id)
 	p.Type = OperationSnapshotVolume
