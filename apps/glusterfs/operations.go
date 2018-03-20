@@ -447,9 +447,10 @@ func (vc *VolumeCloneOperation) Build() error {
 		if e := vc.vol.Save(tx); e != nil {
 			return e
 		}
-		if e := vc.clone.Save(tx); e != nil {
-			return e
-		}
+		// TODO: clone is the to-be-created volume
+		//if e := vc.clone.Save(tx); e != nil {
+		//	return e
+		//}
 		if e := vc.op.Save(tx); e != nil {
 			return e
 		}
