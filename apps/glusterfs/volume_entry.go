@@ -745,27 +745,19 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	return candidateClusters, err
 }
 
-func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, clonename string) (e error) {
+func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, clonename string) (*VolumeEntry, error) {
 	vcr, host, err := v.cloneVolumeRequest(db, clonename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	clone, err := executor.VolumeClone(host, vcr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	vol := NewVolumeEntryFromClone(v, clone)
-
-	err = db.Update(func(tx *bolt.Tx) error {
-		vol.Save(tx)
-		// TODO: need to do similar things as saveCreateVolume() ?
-
-		return nil
-	})
-
-	return nil
+	return vol, nil
 }
 
 func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*executors.VolumeCloneRequest, string, error) {

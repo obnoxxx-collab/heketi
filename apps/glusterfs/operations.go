@@ -438,7 +438,7 @@ func (vc *VolumeCloneOperation) Label() string {
 }
 
 func (vc *VolumeCloneOperation) ResourceUrl() string {
-	return fmt.Sprintf("/volumes/%v/clone", vc.vol.Info.Id)
+	return fmt.Sprintf("/volumes/%v", vc.clone.Info.Id)
 }
 
 func (vc *VolumeCloneOperation) Build() error {
@@ -448,10 +448,6 @@ func (vc *VolumeCloneOperation) Build() error {
 		if e := vc.vol.Save(tx); e != nil {
 			return e
 		}
-		// TODO: clone is the to-be-created volume
-		//if e := vc.clone.Save(tx); e != nil {
-		//	return e
-		//}
 		if e := vc.op.Save(tx); e != nil {
 			return e
 		}
@@ -461,11 +457,15 @@ func (vc *VolumeCloneOperation) Build() error {
 
 func (vc *VolumeCloneOperation) Exec(executor executors.Executor) error {
 	// TODO: finish the implementation...
-	err := vc.vol.cloneVolumeExec(vc.db, executor, vc.clonename)
+	clone, err := vc.vol.cloneVolumeExec(vc.db, executor, vc.clonename)
 	if err != nil {
 		logger.LogError("Error executing clone volume: %v", err)
+		return err
 	}
-	return err
+
+	// Store the newly cloned volume in the VolumeCloneOperation
+	vc.clone = clone
+	return nil
 }
 
 func (vc *VolumeCloneOperation) Rollback(executor executors.Executor) error {
@@ -475,10 +475,6 @@ func (vc *VolumeCloneOperation) Rollback(executor executors.Executor) error {
 		if e := vc.vol.Save(tx); e != nil {
 			return e
 		}
-		// TODO: clone is the to-be-created volume
-		//if e := vc.clone.Save(tx); e != nil {
-		//	return e
-		//}
 
 		vc.op.Delete(tx)
 		return nil
@@ -492,10 +488,9 @@ func (vc *VolumeCloneOperation) Finalize() error {
 		if err := vc.vol.Save(tx); err != nil {
 			return err
 		}
-		// TODO: vc.clone == nil, now Save() is done in cloneVolumeExec()
-		//if err := vc.clone.Save(tx); err != nil {
-		//	return err
-		//}
+		if err := vc.clone.Save(tx); err != nil {
+			return err
+		}
 
 		vc.op.Delete(tx)
 		return nil
