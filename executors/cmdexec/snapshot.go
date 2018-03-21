@@ -113,6 +113,8 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 	}
 	logger.Debug("%+v\n", cliOutput)
 
+	// TODO: start the newly cloned volume
+
 	return s.VolumeInfo(host, cliOutput.SnapClone.Volume.Name)
 }
 
