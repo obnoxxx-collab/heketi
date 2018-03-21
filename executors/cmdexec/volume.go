@@ -345,6 +345,10 @@ func (s *CmdExecutor) VolumeSnapshot(host string, vsr *executors.VolumeSnapshotR
 	}
 	logger.Debug("snapCreate: %+v\n", snapCreate)
 
+	if snapCreate.OpRet != 0 {
+		return nil, fmt.Errorf("Failed to create snapshot of volume %v: %v", vsr.Volume, snapCreate.OpErrStr)
+	}
+
 	snap := &snapCreate.SnapCreate.Snapshot
 	logger.Debug("snapshot: %+v\n", snap)
 
