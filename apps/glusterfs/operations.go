@@ -492,7 +492,7 @@ func (vc *VolumeCloneOperation) Finalize() error {
 		if err := vc.vol.Save(tx); err != nil {
 			return err
 		}
-		// TODO: clone is the to-be-created volume
+		// TODO: vc.clone == nil, now Save() is done in cloneVolumeExec()
 		//if err := vc.clone.Save(tx); err != nil {
 		//	return err
 		//}

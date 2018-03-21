@@ -155,6 +155,23 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 	return entry, nil
 }
 
+func NewVolumeEntryFromClone(v *VolumeEntry, clone *executors.Volume) (*VolumeEntry) {
+	entry := NewVolumeEntry()
+	entry.Info.Name = clone.VolumeName
+
+	entry.Info.Cluster = v.Info.Cluster
+	entry.Info.Gid = v.Info.Gid
+	entry.Info.Id = utils.GenUUID()
+	entry.Info.Durability = v.Info.Durability
+	entry.Info.Snapshot = v.Info.Snapshot
+	entry.Info.Size = v.Info.Size
+	entry.Info.Durability.Type = v.Info.Durability.Type
+
+	// TODO: fill more of the properties (copy them?)
+
+	return entry
+}
+
 func (v *VolumeEntry) BucketName() string {
 	return BOLTDB_BUCKET_VOLUME
 }
@@ -734,10 +751,19 @@ func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, cl
 		return err
 	}
 
-	_, err = executor.VolumeClone(host, vcr)
+	clone, err := executor.VolumeClone(host, vcr)
 	if err != nil {
 		return err
 	}
+
+	vol := NewVolumeEntryFromClone(v, clone)
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		vol.Save(tx)
+		// TODO: need to do similar things as saveCreateVolume() ?
+
+		return nil
+	})
 
 	return nil
 }
