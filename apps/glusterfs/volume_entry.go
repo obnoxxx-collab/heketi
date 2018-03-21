@@ -728,8 +728,8 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	return candidateClusters, err
 }
 
-func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor) (e error) {
-	vcr, host, err := v.cloneVolumeRequest(db, v.Info.Name)
+func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, clonename string) (e error) {
+	vcr, host, err := v.cloneVolumeRequest(db, clonename)
 	if err != nil {
 		return err
 	}
@@ -742,18 +742,22 @@ func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor) (e
 	return nil
 }
 
-func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, volume string) (*executors.VolumeCloneRequest, string, error) {
+func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*executors.VolumeCloneRequest, string, error) {
 	godbc.Require(db != nil)
-	godbc.Require(volume != "")
 
 	// Setup list of bricks
 	vcr := &executors.VolumeCloneRequest{}
-	vcr.Volume = volume
-	//vcr.Clone = clone  // TODO: pass the name of the cloned volume
+	vcr.Volume = v.Info.Name
+
+	if clonename != "" {
+		vcr.Clone = clonename
+	} else {
+		vcr.Clone = "vol_" + utils.GenUUID()
+	}
 
 	var sshhost string
 	err := db.View(func(tx *bolt.Tx) error {
-		vol, err := NewVolumeEntryFromId(tx, volume)
+		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
 			return err
 		}
@@ -778,7 +782,7 @@ func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, volume string) (*executors
 	}
 
 	if sshhost == "" {
-		return nil, "", errors.New("failed to find host for cloning volume " + volume)
+		return nil, "", errors.New("failed to find host for cloning volume " + v.Info.Name)
 	}
 
 	return vcr, sshhost, nil

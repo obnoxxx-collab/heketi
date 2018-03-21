@@ -32,7 +32,7 @@ type Executor interface {
 	SnapshotCloneVolume(host string, scr *SnapshotCloneRequest) (*Volume, error)
 	SnapshotCloneBlockVolume(host string, scr *SnapshotCloneRequest) (*BlockVolumeInfo, error)
 	SnapshotDestroy(host string, snapshot string) error
-	SnapshotInfo(host string, snapshot string) (*Snapshot, error)
+	SnapshotInfo(host string, snapshot string) (*SnapshotInfo, error)
 	HealInfo(host string, volume string) (*HealInfo, error)
 	SetLogLevel(level string)
 	BlockVolumeCreate(host string, blockVolume *BlockVolumeRequest) (*BlockVolumeInfo, error)
@@ -104,6 +104,50 @@ type SnapshotCloneRequest struct {
 	Snapshot string
 }
 
+type Snapshot struct {
+	XMLName     xml.Name `xml:"snapshot"`
+	Name        string   `xml:"name"`
+	UUID        string   `xml:"uuid"`
+}
+
+type SnapCreate struct {
+	XMLName  xml.Name `xml:"snapCreate"`
+	Snapshot Snapshot
+}
+
+type SnapClone struct {
+	XMLName xml.Name    `xml:"CloneCreate"`
+	Volume  VolumeClone
+}
+
+type VolumeClone struct {
+	XMLName xml.Name `xml:"volume"`
+	Name    string   `xml:"name"`
+	UUID    string   `xml:"uuid"`
+}
+
+type SnapDelete struct {
+	XMLName   xml.Name         `xml:"snapDelete"`
+	Snapshots []SnapshotStatus `xml:"snapshots"`
+}
+
+type SnapshotStatus struct {
+	XMLName     xml.Name `xml:"snapshot"`
+	Status      string   `xml:"status"`
+	Name        string   `xml:"name"`
+	UUID        string   `xml:"uuid"`
+}
+
+type SnapActivate struct {
+	XMLName  xml.Name `xml:"snapActivate"`
+	Snapshot Snapshot
+}
+
+type SnapDeactivate struct {
+	XMLName  xml.Name `xml:"snapDeactivate"`
+	Snapshot Snapshot
+}
+
 // TODO: automagically parse the XML output into types/structs
 //
 // # gluster --mode=script --xml snapshot info mysnap
@@ -134,7 +178,7 @@ type SnapshotCloneRequest struct {
 //     </snapshots>
 //   </snapInfo>
 // </cliOutput>
-type Snapshot struct {
+type SnapshotInfo struct {
 	XMLName     xml.Name `xml:"snapshot"`
 	Name        string   `xml:"name"`
 	UUID        string   `xml:"uuid"`

@@ -34,7 +34,7 @@ type MockExecutor struct {
 	MockSnapshotCloneVolume      func(host string, volume *executors.SnapshotCloneRequest) (*executors.Volume, error)
 	MockSnapshotCloneBlockVolume func(host string, volume *executors.SnapshotCloneRequest) (*executors.BlockVolumeInfo, error)
 	MockSnapshotDestroy          func(host string, snapshot string) error
-	MockSnapshotInfo             func(host string, snapshot string) (*executors.Snapshot, error)
+	MockSnapshotInfo             func(host string, snapshot string) (*executors.SnapshotInfo, error)
 	MockHealInfo                 func(host string, volume string) (*executors.HealInfo, error)
 	MockBlockVolumeCreate        func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error)
 	MockBlockVolumeDestroy       func(host string, blockHostingVolumeName string, blockVolumeName string) error
@@ -127,9 +127,9 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return snapshot, nil
 	}
 
-	m.MockVolumeClone = func(host string, vsr *executors.VolumeCloneRequest) (*executors.Volume, error) {
+	m.MockVolumeClone = func(host string, vcr *executors.VolumeCloneRequest) (*executors.Volume, error) {
 		vinfo := &executors.Volume{
-			VolumeName: vsr.Volume,
+			VolumeName: "clone_of_" + vcr.Volume,
 			// TODO: fill more properties
 		}
 
@@ -158,8 +158,8 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return nil
 	}
 
-	m.MockSnapshotInfo = func(host string, snapshot string) (*executors.Snapshot, error) {
-		snapshotInfo := &executors.Snapshot{
+	m.MockSnapshotInfo = func(host string, snapshot string) (*executors.SnapshotInfo, error) {
+		snapshotInfo := &executors.SnapshotInfo{
 			Name: snapshot,
 			// TODO: fill more properties
 		}
@@ -279,7 +279,7 @@ func (m *MockExecutor) SnapshotDestroy(host string, snapshot string) error {
 	return m.MockSnapshotDestroy(host, snapshot)
 }
 
-func (m *MockExecutor) SnapshotInfo(host string, snapshot string) (*executors.Snapshot, error) {
+func (m *MockExecutor) SnapshotInfo(host string, snapshot string) (*executors.SnapshotInfo, error) {
 	return m.MockSnapshotInfo(host, snapshot)
 }
 
