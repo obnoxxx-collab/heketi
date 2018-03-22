@@ -110,6 +110,8 @@ func init() {
 	volumeSnapshotCommand.SilenceUsage = true
 
 	volumeCommand.AddCommand(volumeCloneCommand)
+	volumeCloneCommand.Flags().StringVar(&volname, "name", "",
+		"\n\tOptional: Name of the newly cloned volume.")
 	volumeCloneCommand.SilenceUsage = true
 }
 
