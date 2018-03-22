@@ -157,17 +157,31 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 
 func NewVolumeEntryFromClone(v *VolumeEntry, clone *executors.Volume) (*VolumeEntry) {
 	entry := NewVolumeEntry()
+
 	entry.Info.Name = clone.VolumeName
-
-	entry.Info.Cluster = v.Info.Cluster
-	entry.Info.Gid = v.Info.Gid
+	// TODO: it would be nice to have the Id match the "vol_"+Id name
 	entry.Info.Id = utils.GenUUID()
-	entry.Info.Durability = v.Info.Durability
-	entry.Info.Snapshot = v.Info.Snapshot
-	entry.Info.Size = v.Info.Size
-	entry.Info.Durability.Type = v.Info.Durability.Type
 
-	// TODO: fill more of the properties (copy them?)
+	entry.GlusterVolumeOptions = v.GlusterVolumeOptions
+	entry.Info.Cluster = v.Info.Cluster
+	entry.Info.Durability = v.Info.Durability
+	entry.Info.Durability.Type = v.Info.Durability.Type
+	entry.Info.Gid = v.Info.Gid
+	entry.Info.Mount = v.Info.Mount
+	entry.Info.Size = v.Info.Size
+	entry.Info.Snapshot = v.Info.Snapshot
+	copy(entry.Info.Mount.GlusterFS.Hosts, v.Info.Mount.GlusterFS.Hosts)
+	entry.Info.Mount.GlusterFS.MountPoint = v.Info.Mount.GlusterFS.Hosts[0] + ":" + entry.Info.Name
+	// TODO: copy() does not work here
+	//copy(entry.Info.Mount.GlusterFS.Options, v.Info.Mount.GlusterFS.Options)
+	entry.Info.Mount.GlusterFS.Options = v.Info.Mount.GlusterFS.Options
+	entry.Info.BlockInfo.FreeSize = v.Info.BlockInfo.FreeSize
+	copy(entry.Info.BlockInfo.BlockVolumes, v.Info.BlockInfo.BlockVolumes)
+
+	// TODO: adding bricks like this causes /volume/{clone_uuid} to fail with "Error: Id not found"
+	//for _, b := range clone.Bricks.BrickList {
+	//	entry.Bricks = append(entry.Bricks, b.Name)
+	//}
 
 	return entry
 }
