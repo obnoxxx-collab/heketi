@@ -113,9 +113,18 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 	}
 	logger.Debug("%+v\n", cliOutput)
 
-	// TODO: start the newly cloned volume
+	// start the newly cloned volume
+	command = []string{
+		fmt.Sprintf("gluster --mode=script --xml volume start %v", vcr.Volume),
+	}
 
-	return s.VolumeInfo(host, cliOutput.SnapClone.Volume.Name)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, command, 10)
+	if err != nil {
+		s.VolumeDestroy(host, vcr.Volume)
+		return nil, fmt.Errorf("Unable to start volume %v, clone of snapshot %v: %v", vcr.Volume, vcr.Snapshot, err)
+	}
+
+	return s.VolumeInfo(host, vcr.Volume)
 }
 
 func (s *CmdExecutor) SnapshotCloneBlockVolume(host string, vcr *executors.SnapshotCloneRequest) (*executors.BlockVolumeInfo, error) {
