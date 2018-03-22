@@ -1,4 +1,15 @@
+# Current Status
+
+Client-side API and CLI for VolumeClone have been posted for review (PR#1111).
+
+
 ## TODO
+
+- rebase on PR#1111
+
+- split VolumeClone functionality from Snapshot patches as much as possible
+  - send VolumeClone changes as a PR before adding the advanced snapshot API
+  - once VolumeClone is accepted, send the advanced snapshot API
 
 - create apps/glusterfs/snapshot_entry.go
   - snapshot entry data type
@@ -7,8 +18,6 @@
 - create snapshot operations in apps/glusterfs/operations.go
   (SnapshotCreate, ....).Build/Exec/ etc
   - SnapshotClone() should call executor.SnapshotCloneVolume() or executor.SnapshotCloneBlockVolume()
-
-- implement API handling in apps/glusterfs/app_volume.go
 
 - implement API handling in apps/glusterfs/app_snapshot.go
 
@@ -27,3 +36,5 @@
 - create executor/cmdexec/snapshot.go
 
 - executor.cmdexec.VolumeClone() creates a snapshot, clones it and deletes the snapshot
+
+- implement API handling in apps/glusterfs/app_volume.go
