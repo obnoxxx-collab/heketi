@@ -481,12 +481,41 @@ func (vc *VolumeCloneOperation) Build() error {
 	// TODO: finish the implementation...
 	return vc.db.Update(func(tx *bolt.Tx) error {
 		vc.op.RecordCloneVolume(vc.vol)
-		// TODO: the DeviceEntry's of the volume will be updated too (how to lock them?)
-		// Or create the *Entry's here with UUIDs, and then fill the other attributes?
-		// That way the DeviceEntry.Bricks can refer to the new cloned BrickEntry's...
+		clone, bricks, devices, err := vc.vol.prepareVolumeClone(tx, vc.clonename)
+		if err != nil {
+			return err
+		}
+		vc.clone = clone
+		vc.bricks = bricks
+		vc.devices = devices
+		vc.op.RecordAddVolumeClone(vc.clone)
+		// record new bricks
+		for _, b := range bricks {
+			vc.op.RecordAddBrick(b)
+			if e := b.Save(tx); e != nil {
+				return e
+			}
+		}
+		// save device updates
+		for _, d := range vc.devices {
+			if e := d.Save(tx); e != nil {
+				return e
+			}
+		}
+		// record changes to parent volume
 		if e := vc.vol.Save(tx); e != nil {
 			return e
 		}
+		// add the new volume to the cluster
+		c, err := NewClusterEntryFromId(tx, vc.clone.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		c.VolumeAdd(vc.clone.Info.Id)
+		if err := c.Save(tx); err != nil {
+			return err
+		}
+		// save the pending operation
 		if e := vc.op.Save(tx); e != nil {
 			return e
 		}
@@ -496,17 +525,25 @@ func (vc *VolumeCloneOperation) Build() error {
 
 func (vc *VolumeCloneOperation) Exec(executor executors.Executor) error {
 	// TODO: finish the implementation...
-	// Wow, number of return values is increasing rapidly!
-	clone, bricks, devices, err := vc.vol.cloneVolumeExec(vc.db, executor, vc.clonename)
+	vcr, host, err := vc.vol.cloneVolumeRequest(vc.db, vc.clone.Info.Name)
 	if err != nil {
-		logger.LogError("Error executing clone volume: %v", err)
 		return err
 	}
 
-	// Store the newly cloned volume in the VolumeCloneOperation
-	vc.clone = clone
-	vc.bricks = bricks
-	vc.devices = devices
+	// get all details of the original volume (order of bricks etc)
+	orig, err := executor.VolumeInfo(host, vc.vol.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	clone, err := executor.VolumeClone(host, vcr)
+	if err != nil {
+		return err
+	}
+
+	if err := updateCloneBrickPaths(vc.bricks, orig, clone); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -526,24 +563,18 @@ func (vc *VolumeCloneOperation) Rollback(executor executors.Executor) error {
 func (vc *VolumeCloneOperation) Finalize() error {
 	// TODO: finalize the implementation ...
 	return vc.db.Update(func(tx *bolt.Tx) error {
-		// hack alert! -jjm
-		c, err := NewClusterEntryFromId(tx, vc.vol.Info.Cluster)
-		if err != nil {
-			return err
-		}
-		c.VolumeAdd(vc.clone.Info.Id)
-		if err := c.Save(tx); err != nil {
-			return err
-		}
 		vc.op.FinalizeVolumeClone(vc.vol)
 		if err := vc.vol.Save(tx); err != nil {
 			return err
 		}
+		// finalize the new clone
+		vc.op.FinalizeVolume(vc.clone)
 		if err := vc.clone.Save(tx); err != nil {
 			return err
 		}
-		// TODO: Save() the BrickEntry's
+		// finalize the new bricks
 		for _, b := range vc.bricks {
+			vc.op.FinalizeBrick(b)
 			b.Save(tx)
 		}
 		// TODO: the DeviceEntry of each brick was updated too!
