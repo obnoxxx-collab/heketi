@@ -760,14 +760,81 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 }
 
 
-func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx) {
+func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
+	*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
+
+	bricks := []*BrickEntry{}
+	devices := []*DeviceEntry{}
+	cvol := NewVolumeEntryFromClone(v, clonename)
+	for _, brickId := range v.Bricks {
+		brick, err := CloneBrickEntryFromId(tx, brickId)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		brick.Info.VolumeId = cvol.Info.Id
+
+		cvol.Bricks = append(cvol.Bricks, brick.Id())
+		bricks = append(bricks, brick)
+
+		// Add the cloned brick to the device
+		device.BrickAdd(brick.Id())
+		devices = append(devices, device)
+	}
+	return cvol, bricks, devices, nil
+}
+
+func updateCloneBrickPaths(bricks []*BrickEntry,
+	orig, clone *executors.Volume) error {
+
+	pathIndex := map[string]int{}
+	for i, brick := range bricks {
+		pathIndex[brick.Info.Path] = i
+	}
+	if len(pathIndex) != len(bricks) {
+		return fmt.Errorf(
+			"Unexpected number of brick paths. %v unique paths, %v bricks",
+			len(pathIndex), len(bricks))
+	}
+
+	for i, b := range orig.Bricks.BrickList {
+		c := clone.Bricks.BrickList[i]
+		origPath := strings.Split(b.Name, ":")[1]
+		clonePath := strings.Split(c.Name, ":")[1]
+
+		bidx, ok := pathIndex[origPath]
+		if !ok {
+			return fmt.Errorf(
+				"Failed to find brick path %v in known brick paths",
+				origPath)
+		}
+		brick := bricks[bidx]
+		logger.Debug("Updating brick %v with new path %v (had %v)",
+			brick.Id(), clonePath, origPath)
+		brick.Info.Path = clonePath
+	}
+	return nil
 }
 
 func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, clonename string) (*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
-	vol := NewVolumeEntryFromClone(v, clonename)
-	// vol.Bricks is still empty, it should contain UUIDs for each new brick, done below.
 
-	vcr, host, err := v.cloneVolumeRequest(db, vol.Info.Name)
+	var cvol *VolumeEntry
+	var bricks []*BrickEntry
+	var devices []*DeviceEntry
+	err := db.View(func(tx *bolt.Tx) error {
+		var err error
+		cvol, bricks, devices, err = v.prepareVolumeClone(tx, clonename)
+		return err
+	})
+	if err != nil {
+		return cvol, bricks, devices, err
+	}
+
+	vcr, host, err := v.cloneVolumeRequest(db, cvol.Info.Name)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -783,72 +850,11 @@ func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, cl
 		return nil, nil, nil, err
 	}
 
-	type BrickMatch struct {
-		host      string
-		origPath  string
-		clonePath string
-	}
-
-	bms := []*BrickMatch{}
-	for _, b := range clone.Bricks.BrickList {
-		bm := &BrickMatch{}
-		bm.host = strings.Split(b.Name, ":")[0]
-		bm.clonePath = strings.Split(b.Name, ":")[1]
-		bms = append(bms, bm)
-	}
-
-	for i, b := range orig.Bricks.BrickList {
-		// TODO: compare hostUUID? Needs to be the same.
-		bms[i].origPath = strings.Split(b.Name, ":")[1]
-	}
-
-	bricks := []*BrickEntry{}
-	devices := []*DeviceEntry{}
-	err = db.View(func(tx *bolt.Tx) error {
-		for _, bm := range bms {
-			// TODO: loop throug all v.Bricks and match the .Info.Path with bm.origPath
-			var brick *BrickEntry
-			var err error
-			for _, b := range v.Bricks {
-				origBrick, err := NewBrickEntryFromId(tx, b)
-				if err != nil {
-					break
-				}
-
-				if origBrick.Info.Path != bm.origPath {
-					continue
-				}
-
-				brick, err = CloneBrickEntryFromId(tx, b)
-				if err != nil {
-					break
-				}
-			}
-
-			if brick == nil {
-				return fmt.Errorf("failed to find brick %v: %v", bm.origPath, err)
-			}
-
-			// TODO: set correct brick.Info.Path
-			// Need to find a way to match the bricks from clone with the original bricks?
-			brick.Info.VolumeId = vol.Info.Id
-			brick.Info.Path = bm.clonePath
-
-			vol.Bricks = append(vol.Bricks, brick.Id())
-			bricks = append(bricks, brick)
-
-			// Add the cloned brick to the device
-			device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
-			device.BrickAdd(brick.Id())
-			devices = append(devices, device)
-		}
-		return nil
-	})
-	if err != nil {
+	if err := updateCloneBrickPaths(bricks, orig, clone); err != nil {
 		return nil, nil, nil, err
 	}
 
-	return vol, bricks, devices, nil
+	return cvol, bricks, devices, nil
 }
 
 func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*executors.VolumeCloneRequest, string, error) {
