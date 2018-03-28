@@ -186,7 +186,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
+func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (uint64, error) {
 
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -205,7 +205,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Create request
@@ -218,12 +218,12 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
-	err = executor.BrickDestroy(host, req)
+	sizeFreed, err := executor.BrickDestroy(host, req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return sizeFreed, nil
 }
 
 func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) error {

@@ -107,7 +107,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 }
 
 func (s *CmdExecutor) BrickDestroy(host string,
-	brick *executors.BrickRequest) error {
+	brick *executors.BrickRequest) (uint64, error) {
 
 	godbc.Require(brick != nil)
 	godbc.Require(host != "")
@@ -115,13 +115,15 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	godbc.Require(brick.VgId != "")
 	godbc.Require(brick.Path != "")
 
+	var sizeFreed uint64 = 0
+
 	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
 	commands := []string{
 		fmt.Sprintf("mount | grep -w %v | cut -d\" \" -f1", brick.Path),
 	}
 	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if output == nil || err != nil {
-		return fmt.Errorf("No brick mouned on %v, unable to proceed with removing", brick.Path)
+		return sizeFreed, fmt.Errorf("No brick mouned on %v, unable to proceed with removing", brick.Path)
 	}
 	dev := output[0]
 	// detect the thinp LV used by this brick (in "vg_.../tp_..." format)
@@ -150,6 +152,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
+	} else {
+		sizeFreed = brick.Size
 	}
 
 	// Detect the number of bricks using the thin-pool
@@ -159,12 +163,12 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
-		return fmt.Errorf("Unable to determine number of logical volumes in "+
+		return sizeFreed, fmt.Errorf("Unable to determine number of logical volumes in "+
 			"thin pool %v on host %v", tp, host)
 	}
 	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
 	if err != nil {
-		return fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
+		return sizeFreed, fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
 	}
 
 	// If there is no brick left in the thin-pool, it can be removed
@@ -175,6 +179,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 		if err != nil {
 			logger.Err(err)
+		} else {
+			sizeFreed += brick.TpSize
 		}
 	}
 
@@ -201,5 +207,5 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		logger.Err(err)
 	}
 
-	return nil
+	return sizeFreed, nil
 }
