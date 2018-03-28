@@ -51,6 +51,7 @@ type App struct {
 	executor     executors.Executor
 	_allocator   Allocator
 	conf         *GlusterFSConfig
+	stopHealth   chan<- interface{}
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -170,6 +171,9 @@ func NewApp(configIo io.Reader) *App {
 
 	// Set block settings
 	app.setBlockSettings()
+
+	nhealth := NewNodeHealthCache(app.db, app.executor)
+	app.stopHealth = nhealth.Monitor()
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
@@ -457,6 +461,8 @@ func (a *App) SetRoutes(router *mux.Router) error {
 }
 
 func (a *App) Close() {
+	// stop the health goroutine
+	a.stopHealth <- true
 
 	// Close the DB
 	a.db.Close()
