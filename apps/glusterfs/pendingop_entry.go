@@ -222,6 +222,11 @@ func (p *PendingOperationEntry) RecordCloneVolume(v *VolumeEntry) {
 	v.Pending.Id = p.Id
 }
 
+func (p *PendingOperationEntry) RecordAddVolumeClone(v *VolumeEntry) {
+	p.recordChange(OpAddVolumeClone, v.Info.Id)
+	v.Pending.Id = p.Id
+}
+
 func (p *PendingOperationEntry) FinalizeVolumeClone(v *VolumeEntry) {
 	v.Pending.Id = ""
 	return

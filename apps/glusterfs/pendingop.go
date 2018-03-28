@@ -54,6 +54,7 @@ const (
 	OpRemoveDevice
 	OpCloneVolume
 	OpSnapshotVolume
+	OpAddVolumeClone
 )
 
 // PendingOperationAction tracks individual changes to entries within the
