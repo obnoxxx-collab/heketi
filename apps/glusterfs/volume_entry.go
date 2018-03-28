@@ -820,43 +820,6 @@ func updateCloneBrickPaths(bricks []*BrickEntry,
 	return nil
 }
 
-func (v *VolumeEntry) cloneVolumeExec(db wdb.DB, executor executors.Executor, clonename string) (*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
-
-	var cvol *VolumeEntry
-	var bricks []*BrickEntry
-	var devices []*DeviceEntry
-	err := db.View(func(tx *bolt.Tx) error {
-		var err error
-		cvol, bricks, devices, err = v.prepareVolumeClone(tx, clonename)
-		return err
-	})
-	if err != nil {
-		return cvol, bricks, devices, err
-	}
-
-	vcr, host, err := v.cloneVolumeRequest(db, cvol.Info.Name)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// get all details of the original volume (order of bricks etc)
-	orig, err := executor.VolumeInfo(host, v.Info.Name)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	clone, err := executor.VolumeClone(host, vcr)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	if err := updateCloneBrickPaths(bricks, orig, clone); err != nil {
-		return nil, nil, nil, err
-	}
-
-	return cvol, bricks, devices, nil
-}
-
 func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*executors.VolumeCloneRequest, string, error) {
 	godbc.Require(db != nil)
 	godbc.Require(clonename != "")
