@@ -481,22 +481,7 @@ func (v *VolumeEntry) allocBricks(
 }
 
 func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
-
-	// Access device
-	device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Deallocate space on device
-	device.StorageFree(brick.TotalSize())
-
-	// Delete brick from device
-	device.BrickDelete(brick.Info.Id)
-
-	// Save device
-	err = device.Save(tx)
+	err := brick.RemoveFromDevice(tx)
 	if err != nil {
 		logger.Err(err)
 		return err

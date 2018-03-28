@@ -299,3 +299,27 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 func (b *BrickEntry) UpdatePath() {
 	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
 }
+
+func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
+	// Access device
+	device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Deallocate space on device
+	device.StorageFree(b.TotalSize())
+
+	// Delete brick from device
+	device.BrickDelete(b.Info.Id)
+
+	// Save device
+	err = device.Save(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	return nil
+}
