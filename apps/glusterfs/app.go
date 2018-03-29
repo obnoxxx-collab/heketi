@@ -42,6 +42,11 @@ const (
 var (
 	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
 	dbfilename = "heketi.db"
+	// global var to track active node health cache
+	// if multiple apps are started the content of this var is
+	// undefined.
+	// TODO: make a global not needed
+	currentNodeHealthCache *NodeHealthCache
 )
 
 type App struct {
@@ -177,6 +182,7 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf.MonitorGlusterNodes {
 		app.nhealth = NewNodeHealthCache(app.db, app.executor)
 		app.nhealth.Monitor()
+		currentNodeHealthCache = app.nhealth
 	}
 
 	// Show application has loaded
@@ -499,4 +505,18 @@ func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
 func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
+}
+
+// currentNodeHealthStatus returns a map of node ids to the most
+// recently known health status (true is up, false is not up).
+// If a node is not found in the map its status is unknown.
+// If no heath monitor is active an empty map is always returned.
+func currentNodeHealthStatus() (nodeUp map[string]bool) {
+	if currentNodeHealthCache != nil {
+		nodeUp = currentNodeHealthCache.Status()
+	} else {
+		// just an empty map
+		nodeUp = map[string]bool{}
+	}
+	return
 }
