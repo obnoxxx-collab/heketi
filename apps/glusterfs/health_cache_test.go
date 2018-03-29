@@ -15,7 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
+
+	wdb "github.com/heketi/heketi/pkg/db"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func TestCreateNodeHeathCache(t *testing.T) {
@@ -205,4 +209,58 @@ func TestNodeHeathCacheMultiRefresh(t *testing.T) {
 		tests.Assert(t, up == 3, "expected len(up) == 3, got:", up)
 		tests.Assert(t, down == 3, "expected len(down) == 3, got:", down)
 	}
+}
+
+func TestNodeHeathCacheSkipOffline(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app (I'm being lazy here. An app is not strictly
+	// needed but it is convenient.
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// mark some nodes offline
+	app.db.Update(func(tx *bolt.Tx) error {
+		nl, err := NodeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for i, nodeId := range nl {
+			if i >= 3 {
+				break
+			}
+			n, err := NewNodeEntryFromId(tx, nodeId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			err = n.SetState(wdb.WrapTx(tx), app.executor, api.EntryStateOffline)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+		return nil
+	})
+
+	cc := 0
+	app.xo.MockGlusterdCheck = func(host string) error {
+		cc++
+		return nil
+	}
+	hc := NewNodeHealthCache(app.db, app.executor)
+	tests.Assert(t, hc != nil, "expected hc != nil, got:", hc)
+
+	err = hc.Refresh()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = hc.Refresh()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeUp := hc.Status()
+	tests.Assert(t, len(nodeUp) == 3,
+		"expected len(nodeUp) == 6, got:", len(nodeUp))
+	tests.Assert(t, cc == 6,
+		"expected cc == 12, get:", cc)
 }
