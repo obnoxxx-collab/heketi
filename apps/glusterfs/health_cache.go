@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	_"fmt"
+	_ "fmt"
 	"strings"
 	"sync"
 	"time"
@@ -139,8 +139,8 @@ func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
 			return err
 		}
 		for _, nodeId := range n {
-			if (strings.HasPrefix(nodeId, "MANAGE") ||
-				strings.HasPrefix(nodeId, "STORAGE")) {
+			if strings.HasPrefix(nodeId, "MANAGE") ||
+				strings.HasPrefix(nodeId, "STORAGE") {
 				continue
 			}
 			node, err := NewNodeEntryFromId(tx, nodeId)
