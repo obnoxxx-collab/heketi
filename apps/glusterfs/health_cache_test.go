@@ -129,7 +129,7 @@ func TestNodeHeathCacheSomeUnhealthy(t *testing.T) {
 	cc := 0
 	app.xo.MockGlusterdCheck = func(host string) error {
 		var e error
-		if cc & 1 == 1 {
+		if cc&1 == 1 {
 			e = fmt.Errorf("Bloop %v", cc)
 		}
 		cc++
@@ -176,7 +176,7 @@ func TestNodeHeathCacheMultiRefresh(t *testing.T) {
 	cc := 0
 	app.xo.MockGlusterdCheck = func(host string) error {
 		var e error
-		if cc & 1 == 1 {
+		if cc&1 == 1 {
 			e = fmt.Errorf("Bloop %v", cc)
 		}
 		cc++
