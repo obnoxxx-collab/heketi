@@ -264,3 +264,80 @@ func TestNodeHeathCacheSkipOffline(t *testing.T) {
 	tests.Assert(t, cc == 6,
 		"expected cc == 12, get:", cc)
 }
+
+func TestNodeHeathCacheExpireNodes(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	nowfunc := healthNow
+	defer func() { healthNow = nowfunc }()
+
+	// Create the app (I'm being lazy here. An app is not strictly
+	// needed but it is convenient.
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	currTime := time.Now()
+	healthNow = func() time.Time { return currTime }
+
+	hc := NewNodeHealthCache(app.db, app.executor)
+	tests.Assert(t, hc != nil, "expected hc != nil, got:", hc)
+	hc.Expiration = 1 * time.Hour
+
+	err = hc.Refresh()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeUp := hc.Status()
+	tests.Assert(t, len(nodeUp) == 6,
+		"expected len(nodeUp) == 6, got:", len(nodeUp))
+	for _, v := range nodeUp {
+		tests.Assert(t, v)
+	}
+
+	// mark some nodes offline
+	app.db.Update(func(tx *bolt.Tx) error {
+		nl, err := NodeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for i, nodeId := range nl {
+			if i >= 3 {
+				break
+			}
+			n, err := NewNodeEntryFromId(tx, nodeId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			err = n.SetState(wdb.WrapTx(tx), app.executor, api.EntryStateOffline)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+		return nil
+	})
+
+	// advance time a little
+	currTime = currTime.Add(5 * time.Minute)
+	err = hc.Refresh()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeUp = hc.Status()
+	tests.Assert(t, len(nodeUp) == 6,
+		"expected len(nodeUp) == 6, got:", len(nodeUp))
+	for _, v := range nodeUp {
+		tests.Assert(t, v)
+	}
+
+	// advance time a lot
+	currTime = currTime.Add(10 * time.Hour)
+	err = hc.Refresh()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeUp = hc.Status()
+	tests.Assert(t, len(nodeUp) == 3,
+		"expected len(nodeUp) == 3, got:", len(nodeUp))
+	for _, v := range nodeUp {
+		tests.Assert(t, v)
+	}
+}
