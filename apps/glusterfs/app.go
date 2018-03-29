@@ -51,7 +51,9 @@ type App struct {
 	executor     executors.Executor
 	_allocator   Allocator
 	conf         *GlusterFSConfig
-	stopHealth   chan<- interface{}
+
+	// health monitor
+	nhealth *NodeHealthCache
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -173,8 +175,8 @@ func NewApp(configIo io.Reader) *App {
 	app.setBlockSettings()
 
 	if app.conf.MonitorGlusterNodes {
-		nhealth := NewNodeHealthCache(app.db, app.executor)
-		app.stopHealth = nhealth.Monitor()
+		app.nhealth = NewNodeHealthCache(app.db, app.executor)
+		app.nhealth.Monitor()
 	}
 
 	// Show application has loaded
@@ -472,7 +474,9 @@ func (a *App) SetRoutes(router *mux.Router) error {
 
 func (a *App) Close() {
 	// stop the health goroutine
-	a.stopHealth <- true
+	if a.nhealth != nil {
+		a.nhealth.Stop()
+	}
 
 	// Close the DB
 	a.db.Close()

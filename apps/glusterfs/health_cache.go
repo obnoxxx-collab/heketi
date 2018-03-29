@@ -40,6 +40,9 @@ type NodeHealthCache struct {
 	exec  executors.Executor
 	nodes map[string]*NodeHealthStatus
 	lock  sync.Mutex
+
+	// to stop the monitor
+	stop chan<- interface{}
 }
 
 func NewNodeHealthCache(db wdb.RODB, e executors.Executor) *NodeHealthCache {
@@ -99,9 +102,10 @@ func (hc *NodeHealthCache) cleanOld() {
 	logger.Info("Cleaned %v nodes from health cache", cleaned)
 }
 
-func (hc *NodeHealthCache) Monitor() chan<- interface{} {
+func (hc *NodeHealthCache) Monitor() {
 	ticker := time.NewTicker(hc.CheckInterval)
 	stop := make(chan interface{})
+	hc.stop = stop
 
 	go func() {
 		logger.Info("Started Node Health Cache Monitor")
@@ -119,8 +123,10 @@ func (hc *NodeHealthCache) Monitor() chan<- interface{} {
 			}
 		}
 	}()
+}
 
-	return stop
+func (hc *NodeHealthCache) Stop() {
+	hc.stop <- true
 }
 
 func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
