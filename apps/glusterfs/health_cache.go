@@ -35,6 +35,7 @@ type NodeHealthStatus struct {
 type NodeHealthCache struct {
 	// tunables
 	CheckInterval time.Duration
+	Expiration    time.Duration
 
 	db    wdb.RODB
 	exec  executors.Executor
@@ -51,6 +52,7 @@ func NewNodeHealthCache(db wdb.RODB, e executors.Executor) *NodeHealthCache {
 		exec:          e,
 		nodes:         map[string](*NodeHealthStatus){},
 		CheckInterval: time.Second * 5,
+		Expiration:    time.Hour * 2,
 	}
 }
 
@@ -94,7 +96,7 @@ func (hc *NodeHealthCache) cleanOld() {
 	// purge any items that are stale
 	cleaned := 0
 	for k, v := range hc.nodes {
-		if v.old() {
+		if v.old(hc) {
 			delete(hc.nodes, k)
 			cleaned++
 		}
@@ -164,12 +166,11 @@ func (s *NodeHealthStatus) update(e executors.Executor) {
 	// TODO: add ability to skip check if node was already recently checked
 	err := e.GlusterdCheck(s.Host)
 	s.Up = (err == nil)
-	s.LastUpdate = time.Now()
+	s.LastUpdate = healthNow()
 	logger.Info("Periodic health check status: node %v up=%v",
 		s.NodeId, s.Up)
 }
 
-func (s *NodeHealthStatus) old() bool {
-	// TODO: math to say if this cache entry is stale
-	return false
+func (s *NodeHealthStatus) old(hc *NodeHealthCache) bool {
+	return healthNow().Sub(s.LastUpdate) >= hc.Expiration
 }
