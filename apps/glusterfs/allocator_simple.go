@@ -103,27 +103,6 @@ func GetRebalancedDeviceList(ring *SimpleAllocatorRing, brickId string) (SimpleD
 	return devicelist, nil
 }
 
-func filterOfflineDevices(ring *SimpleAllocatorRing, clusterId, brickId string) *SimpleAllocatorRing {
-	//edit ring
-	NodesStatuses.Mutex.RLock()
-	nodelist := NodesStatuses.Status
-	NodesStatuses.Mutex.Unlock()
-
-	s := NewSimpleAllocatorRing()
-	for zone, n := range ring.ring {
-		nodesInZone := make(map[string][]*SimpleDevice)
-		for node, devicelist := range n {
-
-			if nodelist[node] != false {
-				nodesInZone[node] = devicelist
-			}
-		}
-		s.ring[zone] = nodesInZone
-	}
-
-	return s
-}
-
 func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	brickId string) (<-chan string, chan<- struct{}, error) {
 
@@ -134,10 +113,6 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 		close(device)
 		return device, done, err
 	}
-	// if app.conf.MonitorGlusterNodes {
-	// 	Filtering should be based on this
-	// }
-	ring = filterOfflineDevices(ring, clusterId, brickId)
 
 	devicelist, err := GetRebalancedDeviceList(ring, brickId)
 	if err != nil {
