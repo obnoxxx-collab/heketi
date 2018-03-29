@@ -327,7 +327,8 @@ func (ve *VolumeExpandOperation) Finalize() error {
 // delete an existing volume.
 type VolumeDeleteOperation struct {
 	OperationManager
-	vol *VolumeEntry
+	vol        *VolumeEntry
+	free_space map[string]uint64 // gets set in Exec(), freed_space = free_space[DeviceId]
 }
 
 func NewVolumeDeleteOperation(
@@ -384,7 +385,7 @@ func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	vdel.free_space, err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
 	if err != nil {
 		logger.LogError("Error executing delete volume: %v", err)
 	}
