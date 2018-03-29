@@ -51,7 +51,7 @@ func NewNodeHealthCache(db wdb.RODB, e executors.Executor) *NodeHealthCache {
 		db:            db,
 		exec:          e,
 		nodes:         map[string](*NodeHealthStatus){},
-		CheckInterval: time.Second * 5,
+		CheckInterval: time.Minute * 2,
 		Expiration:    time.Hour * 2,
 	}
 }
