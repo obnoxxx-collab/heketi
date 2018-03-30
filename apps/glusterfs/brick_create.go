@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"sync"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/utils"
@@ -45,19 +47,23 @@ func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*Br
 
 	// return a map with the deviceId as key, and a bool if the space has been free'd
 	reclaimed := map[string]bool{}
+	// the mutex is used to prevent "fatal error: concurrent map writes"
+	mutex := sync.Mutex{}
 
 	// Create a goroutine for each brick
 	for _, brick := range brick_entries {
 		sg.Add(1)
-		go func(b *BrickEntry, f map[string]bool) {
+		go func(b *BrickEntry, r map[string]bool, m *sync.Mutex) {
 			defer sg.Done()
 			spaceReclaimed, err := b.Destroy(db, executor)
 			if err == nil {
 				// mark space from device as freed
-				f[b.Info.DeviceId] = spaceReclaimed
+				m.Lock()
+				r[b.Info.DeviceId] = spaceReclaimed
+				m.Unlock()
 			}
 			sg.Err(err)
-		}(brick, reclaimed)
+		}(brick, reclaimed, &mutex)
 	}
 
 	// Wait here until all goroutines have returned.  If
