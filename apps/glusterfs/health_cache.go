@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	_ "fmt"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +40,7 @@ type NodeHealthCache struct {
 	db    wdb.RODB
 	exec  executors.Executor
 	nodes map[string]*NodeHealthStatus
-	lock  sync.Mutex
+	lock  sync.RWMutex
 
 	// to stop the monitor
 	stop chan<- interface{}
@@ -57,8 +57,8 @@ func NewNodeHealthCache(db wdb.RODB, e executors.Executor) *NodeHealthCache {
 }
 
 func (hc *NodeHealthCache) Status() map[string]bool {
-	hc.lock.Lock()
-	defer hc.lock.Unlock()
+	hc.lock.RLock()
+	defer hc.lock.RUnlock()
 	healthy := map[string]bool{}
 	for k, v := range hc.nodes {
 		healthy[k] = v.Up
@@ -143,9 +143,12 @@ func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
 				strings.HasPrefix(nodeId, "STORAGE") {
 				continue
 			}
+			if tx == nil {
+				return fmt.Errorf("empty transaction, unable to continue to get node entry")
+			}
 			node, err := NewNodeEntryFromId(tx, nodeId)
 			if err != nil {
-				return err
+				continue
 			}
 			// Ignore if the node is not online
 			if !node.isOnline() {
