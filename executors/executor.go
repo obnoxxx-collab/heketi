@@ -19,7 +19,7 @@ type Executor interface {
 	GetDeviceInfo(host, device, vgid string) (*DeviceInfo, error)
 	DeviceTeardown(host, device, vgid string) error
 	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
-	BrickDestroy(host string, brick *BrickRequest) (uint64, error)
+	BrickDestroy(host string, brick *BrickRequest) (bool, error)
 	VolumeCreate(host string, volume *VolumeRequest) (*Volume, error)
 	VolumeDestroy(host string, volume string) error
 	VolumeDestroyCheck(host, volume string) error

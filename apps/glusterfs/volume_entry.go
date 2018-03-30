@@ -445,7 +445,7 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry,
-	sshhost string) (map[string]uint64, error) {
+	sshhost string) (map[string]bool, error) {
 
 	// Determine if we can destroy the volume
 	err := executor.VolumeDestroyCheck(sshhost, v.Info.Name)
@@ -470,13 +470,13 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	}
 
 	// Destroy bricks
-	free_space, err := DestroyBricks(db, executor, brick_entries)
+	space_reclaimed, err := DestroyBricks(db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Unable to delete bricks: %v", err)
 		return nil, err
 	}
 
-	return free_space, nil
+	return space_reclaimed, nil
 }
 
 func (v *VolumeEntry) saveDeleteVolume(db wdb.DB,

@@ -40,24 +40,24 @@ func CreateBricks(db wdb.RODB, executor executors.Executor, brick_entries []*Bri
 	return err
 }
 
-func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*BrickEntry) (map[string]uint64, error) {
+func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*BrickEntry) (map[string]bool, error) {
 	sg := utils.NewStatusGroup()
 
-	// return a map with the deviceId as key, and the free'd space as value
-	free_space := map[string]uint64{}
+	// return a map with the deviceId as key, and a bool if the space has been free'd
+	reclaimed := map[string]bool{}
 
 	// Create a goroutine for each brick
 	for _, brick := range brick_entries {
 		sg.Add(1)
-		go func(b *BrickEntry, f map[string]uint64) {
+		go func(b *BrickEntry, f map[string]bool) {
 			defer sg.Done()
-			sizeFreed, err := b.Destroy(db, executor)
+			spaceReclaimed, err := b.Destroy(db, executor)
 			if err == nil {
 				// mark space from device as freed
-				f[b.Info.DeviceId] = sizeFreed
+				f[b.Info.DeviceId] = spaceReclaimed
 			}
 			sg.Err(err)
-		}(brick, free_space)
+		}(brick, reclaimed)
 	}
 
 	// Wait here until all goroutines have returned.  If
@@ -67,5 +67,5 @@ func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*Br
 		logger.Err(err)
 	}
 
-	return free_space, err
+	return reclaimed, err
 }

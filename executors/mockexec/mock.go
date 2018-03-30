@@ -21,7 +21,7 @@ type MockExecutor struct {
 	MockDeviceSetup              func(host, device, vgid string) (*executors.DeviceInfo, error)
 	MockDeviceTeardown           func(host, device, vgid string) error
 	MockBrickCreate              func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error)
-	MockBrickDestroy             func(host string, brick *executors.BrickRequest) (uint64, error)
+	MockBrickDestroy             func(host string, brick *executors.BrickRequest) (bool, error)
 	MockVolumeCreate             func(host string, volume *executors.VolumeRequest) (*executors.Volume, error)
 	MockVolumeExpand             func(host string, volume *executors.VolumeRequest) (*executors.Volume, error)
 	MockVolumeDestroy            func(host string, volume string) error
@@ -71,9 +71,9 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return b, nil
 	}
 
-	m.MockBrickDestroy = func(host string, brick *executors.BrickRequest) (uint64, error) {
-		// Not returning brick.TpSize for the thin-pool
-		return brick.Size, nil
+	m.MockBrickDestroy = func(host string, brick *executors.BrickRequest) (bool, error) {
+		// We'll assume that the space of the brick has been reclaimed
+		return true, nil
 	}
 
 	m.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
@@ -213,7 +213,7 @@ func (m *MockExecutor) BrickCreate(host string, brick *executors.BrickRequest) (
 	return m.MockBrickCreate(host, brick)
 }
 
-func (m *MockExecutor) BrickDestroy(host string, brick *executors.BrickRequest) (uint64, error) {
+func (m *MockExecutor) BrickDestroy(host string, brick *executors.BrickRequest) (bool, error) {
 	return m.MockBrickDestroy(host, brick)
 }
 
