@@ -153,7 +153,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	if err != nil {
 		logger.Err(err)
 	} else {
-		sizeFreed = brick.Size
+		// TODO/check: no space freed when tp sticks around? sizeFreed = brick.Size
+		sizeFreed = 0
 	}
 
 	// Detect the number of bricks using the thin-pool
@@ -180,7 +181,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		if err != nil {
 			logger.Err(err)
 		} else {
-			sizeFreed += brick.TpSize
+			// TODO/check: how is the size of the thin-pool accounted?
+			sizeFreed = brick.PoolMetadataSize + brick.TpSize
 		}
 	}
 

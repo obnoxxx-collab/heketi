@@ -425,6 +425,20 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 func (vdel *VolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
+
+		// update the device' free/used space after removing bricks
+		for dev_id, free := range vdel.free_space {
+			device, err := NewDeviceEntryFromId(tx, dev_id)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			// Deallocate space on device
+			device.StorageFree(free)
+			device.Save(tx)
+		}
+
 		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
 		if err != nil {
 			logger.LogError("Failed to get bricks from op: %v", err)
@@ -578,8 +592,9 @@ func (vc *VolumeCloneOperation) Finalize() error {
 			vc.op.FinalizeBrick(b)
 			b.Save(tx)
 		}
-		// TODO: the DeviceEntry of each brick was updated too!
+		// the DeviceEntry of each brick was updated too!
 		for _, d := range vc.devices {
+			// because the bricks are cloned, they do not take extra space
 			d.Save(tx)
 		}
 

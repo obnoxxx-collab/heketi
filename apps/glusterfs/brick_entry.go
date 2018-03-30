@@ -213,6 +213,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (uint64, 
 	req.Name = b.Info.Id
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
+	req.PoolMetadataSize = b.PoolMetadataSize
 	req.VgId = b.Info.DeviceId
 	req.Path = strings.TrimSuffix(b.Info.Path, "/brick")
 
@@ -307,9 +308,6 @@ func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
 		logger.Err(err)
 		return err
 	}
-
-	// Deallocate space on device
-	device.StorageFree(b.TotalSize())
 
 	// Delete brick from device
 	device.BrickDelete(b.Info.Id)

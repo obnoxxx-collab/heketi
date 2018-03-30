@@ -781,7 +781,7 @@ func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
 		cvol.Bricks = append(cvol.Bricks, brick.Id())
 		bricks = append(bricks, brick)
 
-		// Add the cloned brick to the device
+		// Add the cloned brick to the device (clones do not take extra storage space)
 		device.BrickAdd(brick.Id())
 		devices = append(devices, device)
 	}
