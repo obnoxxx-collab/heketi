@@ -40,7 +40,7 @@ type NodeHealthCache struct {
 	db    wdb.RODB
 	exec  executors.Executor
 	nodes map[string]*NodeHealthStatus
-	lock  sync.Mutex
+	lock  sync.RWMutex
 
 	// to stop the monitor
 	stop chan<- interface{}
@@ -57,8 +57,8 @@ func NewNodeHealthCache(db wdb.RODB, e executors.Executor) *NodeHealthCache {
 }
 
 func (hc *NodeHealthCache) Status() map[string]bool {
-	hc.lock.Lock()
-	defer hc.lock.Unlock()
+	hc.lock.RLock()
+	defer hc.lock.RUnlock()
 	healthy := map[string]bool{}
 	for k, v := range hc.nodes {
 		healthy[k] = v.Up
