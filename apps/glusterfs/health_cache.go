@@ -105,11 +105,17 @@ func (hc *NodeHealthCache) cleanOld() {
 }
 
 func (hc *NodeHealthCache) Monitor() {
+	logger.Info("Started Node Health Cache Monitor")
 	ticker := time.NewTicker(hc.CheckInterval)
 	stop := make(chan interface{})
 	hc.stop = stop
 	go func() {
-		logger.Info("Started Node Health Cache Monitor")
+		err := hc.Refresh()
+		if err != nil {
+			logger.LogError("Node Heath Cache Monitor: %v", err.Error())
+		}
+	}()
+	go func() {
 		defer ticker.Stop()
 		for {
 			select {
