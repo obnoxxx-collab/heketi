@@ -180,7 +180,7 @@ func NewApp(configIo io.Reader) *App {
 	app.setBlockSettings()
 
 	//default monitor gluster node refresh time
-	var timer uint32 = 10
+	var timer uint32 = 120
 	var startDelay uint32 = 10
 	if app.conf.RefreshTimeMonitorGlusterNodes > 0 {
 		timer = app.conf.RefreshTimeMonitorGlusterNodes
