@@ -185,6 +185,9 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf.RefreshTimeMoniterGlusterNodes > 0 {
 		timer = app.conf.RefreshTimeMoniterGlusterNodes
 	}
+	if app.conf.StartTimeMonitorGlusterNodes > 0 {
+		startDelay = app.conf.StartTimeMonitorGlusterNodes
+	}
 	if app.conf.MonitorGlusterNodes {
 		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
 		app.nhealth.Monitor()
