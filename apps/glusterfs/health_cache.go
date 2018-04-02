@@ -34,6 +34,7 @@ type NodeHealthStatus struct {
 
 type NodeHealthCache struct {
 	// tunables
+	StartInterval time.Duration
 	CheckInterval time.Duration
 	Expiration    time.Duration
 
@@ -46,11 +47,12 @@ type NodeHealthCache struct {
 	stop chan<- interface{}
 }
 
-func NewNodeHealthCache(reftime uint32, db wdb.RODB, e executors.Executor) *NodeHealthCache {
+func NewNodeHealthCache(reftime, starttime uint32, db wdb.RODB, e executors.Executor) *NodeHealthCache {
 	return &NodeHealthCache{
 		db:            db,
 		exec:          e,
 		nodes:         map[string](*NodeHealthStatus){},
+		StartInterval: time.Second * time.Duration(starttime),
 		CheckInterval: time.Second * time.Duration(reftime),
 		Expiration:    time.Hour * 2,
 	}
@@ -105,23 +107,24 @@ func (hc *NodeHealthCache) cleanOld() {
 }
 
 func (hc *NodeHealthCache) Monitor() {
-	logger.Info("Started Node Health Cache Monitor")
+	startTimer := time.NewTimer(hc.StartInterval)
 	ticker := time.NewTicker(hc.CheckInterval)
 	stop := make(chan interface{})
 	hc.stop = stop
+
 	go func() {
-		err := hc.Refresh()
-		if err != nil {
-			logger.LogError("Node Heath Cache Monitor: %v", err.Error())
-		}
-	}()
-	go func() {
+		logger.Info("Started Node Health Cache Monitor")
 		defer ticker.Stop()
 		for {
 			select {
 			case <-stop:
 				logger.Info("Stopping Node Health Cache Monitor")
 				return
+			case <-startTimer.C:
+				err := hc.Refresh()
+				if err != nil {
+					logger.LogError("Node Heath Cache Monitor: %v", err.Error())
+				}
 			case <-ticker.C:
 				err := hc.Refresh()
 				if err != nil {
