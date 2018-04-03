@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	_ "fmt"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -151,9 +151,12 @@ func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
 				strings.HasPrefix(nodeId, "STORAGE") {
 				continue
 			}
+			if tx == nil {
+				return fmt.Errorf("empty transaction, unable to continue to get node entry")
+			}
 			node, err := NewNodeEntryFromId(tx, nodeId)
 			if err != nil {
-				return err
+				continue
 			}
 			// Ignore if the node is not online
 			if !node.isOnline() {
